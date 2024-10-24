@@ -1,4 +1,4 @@
-# Variáveis para configurar as VNETs e subnets 
+# Variáveis para configurar as VNETs e subnets
 variable "azure_location" {
   description = "Localização do Azure para os recursos"
   type        = string
