@@ -65,12 +65,11 @@ resource "aws_route_table_association" "public_route_association" {
   route_table_id = aws_route_table.route_table_vpc10.id
 }
 
-# Peering entre VPC10 e VPC20
+# Peering entre VPC10 e VPC20 (ambas na mesma região)
 resource "aws_vpc_peering_connection" "vpc_peering" {
   vpc_id        = aws_vpc.vpc10.id
   peer_vpc_id   = aws_vpc.vpc20.id
   auto_accept   = true
-  peer_region   = "us-east-1"
   tags = {
     Name = "VPC10-to-VPC20-Peering"
   }

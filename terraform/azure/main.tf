@@ -1,124 +1,54 @@
-# Variáveis para configurar as VNETs e subnets
-variable "azure_location" {
-  description = "Localização do Azure para os recursos"
-  type        = string
-  default     = "East US"
-}
-
-variable "vnet10_address_space" {
-  description = "Espaço de endereçamento da VNET10 (Pública)"
-  type        = list(string)
-  default     = ["10.0.0.0/16"]
-}
-
-variable "vnet20_address_space" {
-  description = "Espaço de endereçamento da VNET20 (Privada)"
-  type        = list(string)
-  default     = ["10.1.0.0/16"]
-}
-
-variable "vnet10_subnet_public" {
-  description = "Espaço de endereçamento da subnet pública na VNET10"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
-variable "vnet20_subnet_private" {
-  description = "Espaço de endereçamento da subnet privada na VNET20"
-  type        = string
-  default     = "10.1.1.0/24"
-}
-
-# Criar grupo de recursos
-resource "azurerm_resource_group" "example" {
+# Criar Grupo de Recursos
+resource "azurerm_resource_group" "rg" {
   name     = "myResourceGroup"
-  location = var.azure_location
+  location = "brazilsouth"
 }
 
-# VNET10 (Pública)
-resource "azurerm_virtual_network" "vnet10" {
-  name                = "VNET10"
-  address_space       = var.vnet10_address_space
-  location            = var.azure_location
-  resource_group_name = azurerm_resource_group.example.name
+# Criar VNet
+resource "azurerm_virtual_network" "vnet" {
+  name                = "myVNet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
 }
 
-# Subnet pública na VNET10
-resource "azurerm_subnet" "vnet10_subnet_public" {
-  name                 = "PublicSubnet"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.vnet10.name
-  address_prefixes     = [var.vnet10_subnet_public]
+# Criar Subnet Pública
+resource "azurerm_subnet" "subnet_public" {
+  name                 = "myPublicSubnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
 }
 
-# Interface de rede pública na VNET10
-resource "azurerm_network_interface" "public_nic" {
-  name                = "PublicNIC"
-  location            = var.azure_location
-  resource_group_name = azurerm_resource_group.example.name
-
-  ip_configuration {
-    name                          = "PublicIPConfig"
-    subnet_id                     = azurerm_subnet.vnet10_subnet_public.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.public_ip.id
-  }
+# Criar Subnet Privada
+resource "azurerm_subnet" "subnet_private" {
+  name                 = "myPrivateSubnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.2.0/24"]
 }
 
-# IP público para a interface de rede pública
+# Criar IP Público com SKU Standard e alocação estática
 resource "azurerm_public_ip" "public_ip" {
-  name                = "PublicIPAddress"
-  location            = var.azure_location
-  resource_group_name = azurerm_resource_group.example.name
-  allocation_method   = "Dynamic"
-}
-
-# VNET20 (Privada)
-resource "azurerm_virtual_network" "vnet20" {
-  name                = "VNET20"
-  address_space       = var.vnet20_address_space
-  location            = var.azure_location
-  resource_group_name = azurerm_resource_group.example.name
-}
-
-# Subnet privada na VNET20
-resource "azurerm_subnet" "vnet20_subnet_private" {
-  name                 = "PrivateSubnet"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.vnet20.name
-  address_prefixes     = [var.vnet20_subnet_private]
-}
-
-# Interface de rede privada na VNET20
-resource "azurerm_network_interface" "private_nic" {
-  name                = "PrivateNIC"
-  location            = var.azure_location
-  resource_group_name = azurerm_resource_group.example.name
-
-  ip_configuration {
-    name                          = "PrivateIPConfig"
-    subnet_id                     = azurerm_subnet.vnet20_subnet_private.id
-    private_ip_address_allocation = "Dynamic"
+  name                = "myPublicIP"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"  # Corrigido para Static
+  sku                 = "Standard"  # Mantém o SKU Standard
+  tags = {
+    environment = "Production"
   }
 }
 
-# Peering entre VNET10 e VNET20
-resource "azurerm_virtual_network_peering" "vnet10_to_vnet20" {
-  name                      = "VNET10-to-VNET20"
-  resource_group_name       = azurerm_resource_group.example.name
-  virtual_network_name      = azurerm_virtual_network.vnet10.name
-  remote_virtual_network_id = azurerm_virtual_network.vnet20.id
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
+# Gateway de Rede para a Subnet Pública (Opcional)
+resource "azurerm_network_security_group" "nsg" {
+  name                = "myNSG"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
 }
 
-resource "azurerm_virtual_network_peering" "vnet20_to_vnet10" {
-  name                      = "VNET20-to-VNET10"
-  resource_group_name       = azurerm_resource_group.example.name
-  virtual_network_name      = azurerm_virtual_network.vnet20.name
-  remote_virtual_network_id = azurerm_virtual_network.vnet10.id
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
+# Associar NSG à Subnet Pública
+resource "azurerm_subnet_network_security_group_association" "nsg_association" {
+  subnet_id                 = azurerm_subnet.subnet_public.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
 }
