@@ -1,4 +1,4 @@
-# Criar VPC10 (Pública)
+# Criar VPC10 (Pública) 
 resource "aws_vpc" "vpc10" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
